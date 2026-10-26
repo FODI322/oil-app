@@ -16,7 +16,6 @@
   .btn.active { outline: 4px solid #0b2a3a; }
   .title { background: #3aa7cf; border-radius: 14px; padding: 18px; text-align: center; font-size: 28px; font-weight: 700; }
 
-  /* вход */
   .login { max-width: 460px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; justify-content: center; }
   .login p { margin: 0; font-size: 17px; color: #27465a; }
   .login input { font-size: 20px; padding: 14px; border: 2px solid #9ec9dc; border-radius: 10px; width: 100%; }
@@ -24,7 +23,6 @@
   .login .row .btn { flex: 1; }
   .error { color: #c0392b; min-height: 22px; font-size: 16px; }
 
-  /* главный экран */
   .main { display: grid; grid-template-columns: 250px 1fr 380px; gap: 16px; padding: 16px; height: 100%; }
   .parts { display: flex; flex-direction: column; gap: 8px; }
   .part { flex: 1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border: 1px solid #3aa7cf; border-radius: 8px; background: #bfe3f2; font-size: 17px; }
@@ -44,7 +42,6 @@
   .presence h3 { margin: 0 0 8px; font-size: 19px; }
   .presence ul { margin: 0; padding-left: 18px; }
 
-  /* результаты */
   .results { padding: 24px; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
   .results h2 { margin: 0; font-size: 26px; }
   .rrow { display: flex; align-items: center; gap: 12px; }
@@ -65,30 +62,17 @@
 <body>
 <div id="app"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js"></script>
 <script>
-// ---------- данные о частях скважины ----------
 const PARTS = [
-  { id: 'mouth', name: 'Устье',
-    text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину (герметизирует ее) и служит входом для оборудования.',
-    rects: [[0.27, 0.00, 0.46, 0.05]] },
-  { id: 'direction', name: 'Направление',
-    text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта, чтобы его не размыло и чтобы скважина не “расползалась” в верхней части.',
-    rects: [[0.27, 0.05, 0.46, 0.09]] },
-  { id: 'conductor', name: 'Кондуктор',
-    text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты, чтобы они не загрязнялись при бурении и не смешивались с нефтью.',
-    rects: [[0.32, 0.14, 0.36, 0.10]] },
-  { id: 'casing', name: 'Обсадная колонна',
-    text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом, чтобы стенки не обваливались, а пластовые воды и горные породы не смешивались между собой.',
-    rects: [[0.40, 0.24, 0.20, 0.36]] },
-  { id: 'walls', name: 'Стенки скважины',
-    text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются, поэтому их укрепляют обсадной колонной и цементом.',
-    rects: [[0.385, 0.24, 0.015, 0.36], [0.60, 0.24, 0.015, 0.36], [0.44, 0.60, 0.01, 0.30], [0.55, 0.60, 0.01, 0.30]] },
-  { id: 'production', name: 'Эксплуатационная колонна',
-    text: 'Последняя, самая узкая колонна. Спускается до продуктивного пласта, и по ней нефть поднимается на поверхность.',
-    rects: [[0.45, 0.60, 0.10, 0.30]] },
-  { id: 'bottom', name: 'Забой',
-    text: 'Дно скважины, самая нижняя точка, до которой дошло бурение. При бурении здесь долото разрушает породу и формирует конечную глубину скважины.',
-    rects: [[0.36, 0.90, 0.28, 0.03]] }
+  { id: 'mouth', name: 'Устье', text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину и служит входом для оборудования.', rects: [[0.27, 0.00, 0.46, 0.05]] },
+  { id: 'direction', name: 'Направление', text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта.', rects: [[0.27, 0.05, 0.46, 0.09]] },
+  { id: 'conductor', name: 'Кондуктор', text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты.', rects: [[0.32, 0.14, 0.36, 0.10]] },
+  { id: 'casing', name: 'Обсадная колонна', text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом.', rects: [[0.40, 0.24, 0.20, 0.36]] },
+  { id: 'walls', name: 'Стенки скважины', text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются.', rects: [[0.385, 0.24, 0.015, 0.36], [0.60, 0.24, 0.015, 0.36], [0.44, 0.60, 0.01, 0.30], [0.55, 0.60, 0.01, 0.30]] },
+  { id: 'production', name: 'Эксплуатационная колонна', text: 'Последняя, самая узкая колонна. По ней нефть поднимается на поверхность.', rects: [[0.45, 0.60, 0.10, 0.30]] },
+  { id: 'bottom', name: 'Забой', text: 'Дно скважины, самая нижняя точка, до которой дошло бурение.', rects: [[0.36, 0.90, 0.28, 0.03]] }
 ];
 const LEVELS = [
   { name: 'Плохо понял', color: '#d64545' },
@@ -96,39 +80,23 @@ const LEVELS = [
   { name: 'Понял', color: '#3aa655' }
 ];
 
-const PRESENCE_KEY = 'oil_presence';
 const PRESENCE_TTL = 30000;
+const useSupabase = !!(window.APP_CONFIG && window.APP_CONFIG.supabaseUrl && window.APP_CONFIG.supabaseAnonKey);
+const supabase = useSupabase ? window.supabase.createClient(window.APP_CONFIG.supabaseUrl, window.APP_CONFIG.supabaseAnonKey) : null;
 
 function load(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }
   catch (e) { return fallback; }
 }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
-function hash(str) {
-  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
-  for (let i = 0; i < str.length; i++) {
-    const ch = str.charCodeAt(i);
-    h1 = Math.imul(h1 ^ ch, 2654435761);
-    h2 = Math.imul(h2 ^ ch, 1597334677);
-  }
-  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
-  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
-  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
-}
-
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
-// ---------- состояние ----------
 let user = load('oil_session', null);
 let screen = 'well';
 let selected = 0;
 let presenceChannel = null;
 
 function myDrops() { return (load('oil_drops', {})[user]) || {}; }
-
 function setLevel(level) {
   const all = load('oil_drops', {});
   all[user] = all[user] || {};
@@ -137,57 +105,68 @@ function setLevel(level) {
   render();
 }
 
-function getPresenceMap() {
-  const map = load(PRESENCE_KEY, {});
+function getLocalPresenceMap() {
+  const map = load('oil_presence', {});
   const now = Date.now();
   for (const key in map) {
     if (now - (map[key].seenAt || 0) > PRESENCE_TTL) delete map[key];
   }
-  save(PRESENCE_KEY, map);
+  save('oil_presence', map);
   return map;
 }
 
-function updatePresence() {
-  if (!user) return;
-  const map = getPresenceMap();
+function updateLocalPresence() {
+  const map = getLocalPresenceMap();
   map[user] = { name: user, seenAt: Date.now() };
-  save(PRESENCE_KEY, map);
-  if (presenceChannel) { presenceChannel.postMessage({ type: 'presence', name: user, seenAt: Date.now() }); }
-  renderOnlineUsers();
-}
-
-function renderOnlineUsers() {
-  const users = Object.values(getPresenceMap())
-    .filter(u => u && u.name)
-    .map(u => u.name)
-    .sort((a, b) => a.localeCompare(b));
-
-  const list = users.length ? users.map(name => `<li>${esc(name)}</li>`).join('') : '<li>Никого</li>';
-  return `<div class="presence"><h3>Кто сейчас в комнат��:</h3><ul>${list}</ul></div>`;
-}
-
-function subscribePresence() {
-  if ('BroadcastChannel' in window) {
-    presenceChannel = new BroadcastChannel('oil_presence_channel');
-    presenceChannel.onmessage = (event) => {
-      const msg = event.data || {};
-      if (msg.name) {
-        const map = getPresenceMap();
-        map[msg.name] = { name: msg.name, seenAt: msg.seenAt || Date.now() };
-        save(PRESENCE_KEY, map);
-        renderOnlineUsers();
-      }
-    };
-  }
-
-  window.addEventListener('storage', (event) => {
-    if (event.key === PRESENCE_KEY) {
-      renderOnlineUsers();
-    }
-  });
+  save('oil_presence', map);
+  if (presenceChannel) presenceChannel.postMessage({ name: user, seenAt: Date.now() });
 }
 
 function showError(msg) { document.getElementById('err').textContent = msg; }
+
+async function updatePresence() {
+  if (!user) return;
+  if (supabase) {
+    const { error } = await supabase.from('profiles').upsert({ name: user, last_seen: new Date().toISOString() }, { onConflict: 'name' });
+    if (error) console.error(error);
+  } else {
+    updateLocalPresence();
+  }
+  renderOnlineUsers();
+}
+
+async function getPresenceUsers() {
+  if (supabase) {
+    const cutoff = new Date(Date.now() - PRESENCE_TTL).toISOString();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('name,last_seen')
+      .gt('last_seen', cutoff)
+      .order('last_seen', { ascending: false });
+    if (error) return [];
+    return data.map(r => r.name);
+  }
+  return Object.values(getLocalPresenceMap()).map(u => u.name).sort((a,b) => a.localeCompare(b));
+}
+
+async function renderOnlineUsers() {
+  const users = await getPresenceUsers();
+  const list = users.length ? users.map(name => `<li>${esc(name)}</li>`).join('') : '<li>Никого</li>';
+  const el = document.getElementById('onlineList');
+  if (el) el.innerHTML = `<div class="presence"><h3>Кто сейчас в комнате:</h3><ul>${list}</ul></div>`;
+}
+
+function subscribePresence() {
+  if (!supabase) {
+    if ('BroadcastChannel' in window) {
+      presenceChannel = new BroadcastChannel('oil_presence_channel');
+      presenceChannel.onmessage = () => renderOnlineUsers();
+    }
+    window.addEventListener('storage', (event) => {
+      if (event.key === 'oil_presence') renderOnlineUsers();
+    });
+  }
+}
 
 function submitAuth() {
   const name = document.getElementById('name').value.trim();
@@ -203,18 +182,17 @@ function logout() { user = null; save('oil_session', null); render(); }
 function selectPart(i) { selected = i; render(); }
 function go(s) { screen = s; render(); }
 
-// ---------- вход и регистрация ----------
 function renderLogin() {
   return `
-  <div class="login">
-    <div class="title">Конструкция скважины</div>
-    <p>Введи своё имя, чтобы все увидели, кто уже зашёл в комнату.</p>
-    <input id="name" type="text" placeholder="Имя" autocomplete="off">
-    <div class="error" id="err"></div>
-    <div class="row">
-      <button class="btn primary" onclick="submitAuth()">Войти</button>
-    </div>
-  </div>`;
+    <div class="login">
+      <div class="title">Конструкция скважины</div>
+      <p>Введи своё имя, чтобы все увидели, кто уже зашёл в комнату.</p>
+      <input id="name" type="text" placeholder="Имя" autocomplete="off">
+      <div class="error" id="err"></div>
+      <div class="row">
+        <button class="btn primary" onclick="submitAuth()">Войти</button>
+      </div>
+    </div>`;
 }
 
 function renderWellSvg(drops) {
@@ -268,7 +246,7 @@ function renderWell() {
       <p class="ask">Как ты понял эту часть? Поставь каплю:</p>
       ${levelBtns}
       <div class="spacer"></div>
-      ${renderOnlineUsers()}
+      <div id="onlineList"></div>
       <button class="btn" onclick="go('results')">Результаты группы</button>
       <button class="btn" onclick="logout()">Выйти (${esc(user)})</button>
     </div>
@@ -282,39 +260,28 @@ function renderResults() {
     Object.values(all).forEach(d => { if (d[p.id] !== undefined) c[d[p.id]]++; });
     const total = Math.max(1, c[0] + c[1] + c[2]);
     const seg = (n, color) => `<div style="width:${n / total * 100}%;background:${color}"></div>`;
-    return `<div class="rrow">
-      <div class="rname">${esc(p.name)}</div>
-      <div class="bar">${seg(c[0], LEVELS[0].color)}${seg(c[1], LEVELS[1].color)}${seg(c[2], LEVELS[2].color)}</div>
-      <div class="nums">${c[0]} / ${c[1]} / ${c[2]}</div>
-    </div>`;
+    return `<div class="rrow"><div class="rname">${esc(p.name)}</div><div class="bar">${seg(c[0], LEVELS[0].color)}${seg(c[1], LEVELS[1].color)}${seg(c[2], LEVELS[2].color)}</div><div class="nums">${c[0]} / ${c[1]} / ${c[2]}</div></div>`;
   }).join('');
   return `
-  <div class="results">
-    <h2>Результаты группы (все студенты на этом планшете)</h2>
-    <p>Красный: плохо понял, жёлтый: частично, зелёный: понял. Числа идут в том же порядке.</p>
-    ${rows}
-    ${renderOnlineUsers()}
-    <button class="btn primary" style="align-self:flex-start" onclick="go('well')">Назад к схеме</button>
-  </div>`;
+    <div class="results">
+      <h2>Результаты группы</h2>
+      <p>Красный: плохо понял, жёлтый: частично, зелёный: понял.</p>
+      ${rows}
+      <div id="onlineList"></div>
+      <button class="btn primary" style="align-self:flex-start" onclick="go('well')">Назад к схеме</button>
+    </div>`;
 }
 
 function render() {
   const app = document.getElementById('app');
   if (!user) app.innerHTML = renderLogin();
   else app.innerHTML = screen === 'results' ? renderResults() : renderWell();
+  renderOnlineUsers();
 }
 
 subscribePresence();
 render();
-
-if (!user) {
-  // ничего не делаем
-} else {
-  updatePresence();
-}
-setInterval(() => {
-  if (user) updatePresence();
-}, 15000);
+setInterval(() => { if (user) updatePresence(); }, 15000);
 
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
