@@ -1,8 +1,10 @@
-// Настройки отправки писем (сервис EmailJS, emailjs.com).
-// Впиши сюда три значения из своего аккаунта EmailJS между кавычками.
-// Пока поля пустые, письма не отправляются, и регистрация работает как раньше.
-const EMAIL_CONFIG = {
-  serviceId: '',   // Email Services → Service ID (например service_abc123)
-  templateId: '',  // Email Templates → Template ID (например template_xyz789)
-  publicKey: ''    // Account → General → Public Key
+const APP_CONFIG = {
+  supabaseUrl: '',
+  supabaseAnonKey: ''
 };
+
+// Чтобы включить общий список студентов на разных телефонах:
+// 1. Создай проект в Supabase
+// 2. Вставь URL и anon key ниже
+// 3. Открой страницу
+// Если поля пустые — приложение работает в локальном режиме на одном устройстве.
