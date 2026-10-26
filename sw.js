@@ -1,7 +1,7 @@
-// Service worker: кладёт файлы приложения в память планшета,
-// после первого открытия всё работает без интернета.
-const CACHE = 'oil-reflection-v1';
-const FILES = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
+// Service worker: хранит файлы приложения в памяти планшета, чтобы оно открывалось без интернета.
+// Сначала пробует взять свежую версию из сети, если сети нет, берёт сохранённую.
+const CACHE = 'oil-reflection-v2';
+const FILES = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES)).then(() => self.skipWaiting()));
@@ -16,6 +16,15 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(caches.match(e.request).then((cached) => cached || fetch(e.request)));
+  const req = e.request;
+  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  e.respondWith(
+    fetch(req)
+      .then((res) => {
+        const copy = res.clone();
+        caches.open(CACHE).then((c) => c.put(req, copy));
+        return res;
+      })
+      .catch(() => caches.match(req))
+  );
 });
