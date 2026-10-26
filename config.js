@@ -1,6 +1,6 @@
 const APP_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseUrl: 'https://hhlmhenvwhiuhxjsncz.supabase.co',
+  supabaseAnonKey: 'sb_publishable_78DgE1m1sjnBA66AGtccSQ_GnvM7GEF'
 };
 
 // Чтобы включить общий режим для нескольких планшетов:
