@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конструкция скважины</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3aa7cf">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, Roboto, Arial, sans-serif; background: #eef6fb; color: #0b2a3a; }
+  button { font: inherit; cursor: pointer; }
+  .btn { border: 0; border-radius: 10px; padding: 14px 18px; font-size: 18px; background: #bfe3f2; color: #0b2a3a; }
+  .btn.primary { background: #3aa7cf; font-weight: 700; }
+  .btn.active { outline: 4px solid #0b2a3a; }
+  .title { background: #3aa7cf; border-radius: 14px; padding: 18px; text-align: center; font-size: 28px; font-weight: 700; }
+
+  /* вход */
+  .login { max-width: 460px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; justify-content: center; }
+  .login p { margin: 0; font-size: 17px; color: #27465a; }
+  .login input { font-size: 20px; padding: 14px; border: 2px solid #9ec9dc; border-radius: 10px; width: 100%; }
+  .login .row { display: flex; gap: 12px; }
+  .login .row .btn { flex: 1; }
+  .error { color: #c0392b; min-height: 22px; font-size: 16px; }
+
+  /* главный экран */
+  .main { display: grid; grid-template-columns: 250px 1fr 380px; gap: 16px; padding: 16px; height: 100%; }
+  .parts { display: flex; flex-direction: column; gap: 8px; }
+  .part { flex: 1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border: 1px solid #3aa7cf; border-radius: 8px; background: #bfe3f2; font-size: 18px; color: #0b2a3a; }
+  .part.sel { background: #3aa7cf; font-weight: 700; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; margin-left: 8px; }
+  .well { min-height: 0; background: #fff; border-radius: 10px; overflow: hidden; }
+  .well svg { width: 100%; height: 100%; display: block; }
+  .info { display: flex; flex-direction: column; gap: 12px; }
+  .info h2 { margin: 0; font-size: 30px; }
+  .info p { margin: 0; font-size: 19px; color: #27465a; line-height: 1.4; }
+  .info .ask { font-weight: 700; color: #0b2a3a; margin-top: 8px; }
+  .spacer { flex: 1; }
+
+  /* результаты */
+  .results { padding: 24px; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .results h2 { margin: 0; font-size: 26px; }
+  .rrow { display: flex; align-items: center; gap: 12px; }
+  .rname { width: 260px; font-size: 19px; }
+  .bar { flex: 1; height: 34px; border-radius: 6px; background: #dfe7ec; display: flex; overflow: hidden; }
+  .nums { width: 130px; font-size: 18px; color: #27465a; }
+
+  @media (max-width: 950px) {
+    .main { grid-template-columns: 1fr; height: auto; }
+    .parts { flex-direction: row; flex-wrap: wrap; }
+    .part { flex: 1 1 45%; min-height: 52px; }
+    .well { height: 520px; }
+    .rname { width: 130px; font-size: 16px; }
+    .nums { width: 90px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script>
+// ---------- данные о частях скважины ----------
+// rects: [x, y, w, h] в долях от размера рисунка
+const PARTS = [
+  { id: 'mouth', name: 'Устье',
+    text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину (герметизирует) и позволяет ею управлять.',
+    rects: [[0.27, 0.00, 0.46, 0.05]] },
+  { id: 'direction', name: 'Направление',
+    text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта, чтобы его не размыло и устье не провалилось.',
+    rects: [[0.27, 0.05, 0.46, 0.09]] },
+  { id: 'conductor', name: 'Кондуктор',
+    text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты, чтобы они не загрязнялись. На него устанавливают противовыбросовое оборудование.',
+    rects: [[0.32, 0.14, 0.36, 0.10]] },
+  { id: 'casing', name: 'Обсадная колонна',
+    text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом, чтобы стенки не обваливались, а пласты не перетекали друг в друга.',
+    rects: [[0.40, 0.24, 0.20, 0.36]] },
+  { id: 'walls', name: 'Стенки скважины',
+    text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются, поэтому их укрепляют обсадными колоннами.',
+    rects: [[0.385, 0.24, 0.015, 0.36], [0.60, 0.24, 0.015, 0.36], [0.44, 0.60, 0.01, 0.30], [0.55, 0.60, 0.01, 0.30]] },
+  { id: 'production', name: 'Эксплуатационная колонна',
+    text: 'Последняя, самая узкая колонна. Спускается до продуктивного пласта, и по ней нефть поднимается на поверхность.',
+    rects: [[0.45, 0.60, 0.10, 0.30]] },
+  { id: 'bottom', name: 'Забой',
+    text: 'Дно скважины, самая нижняя точка, до которой дошло бурение. При бурении здесь долото разрушает породу, а при добыче именно сюда из пласта поступает нефть.',
+    rects: [[0.36, 0.90, 0.28, 0.03]] }
+];
+const LEVELS = [
+  { name: 'Плохо понял', color: '#d64545' },
+  { name: 'Понял частично', color: '#e0a526' },
+  { name: 'Понял', color: '#3aa655' }
+];
+
+// ---------- хранилище (всё лежит в браузере планшета) ----------
+function load(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+
+// простой хэш пароля (для учебного приложения, не для банка)
+function hash(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------- состояние ----------
+let user = load('oil_session', null);   // почта вошедшего студента
+let screen = 'well';                    // 'well' или 'results'
+let selected = 0;                       // выбранная часть скважины
+
+function myDrops() { return (load('oil_drops', {})[user]) || {}; }
+
+function setLevel(level) {
+  const all = load('oil_drops', {});
+  all[user] = all[user] || {};
+  all[user][PARTS[selected].id] = level;
+  save('oil_drops', all);
+  render();
+}
+
+// ---------- вход и регистрация ----------
+function showError(msg) { document.getElementById('err').textContent = msg; }
+
+function submitAuth(isRegister) {
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const pass = document.getElementById('pass').value;
+  const users = load('oil_users', {});
+
+  if (isRegister) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Введи почту в формате name@mail.ru');
+    if (pass.length < 4) return showError('Пароль должен быть хотя бы 4 символа');
+    if (users[email]) return showError('Эта почта уже зарегистрирована');
+    const salt = Math.random().toString(36).slice(2);
+    users[email] = { salt, hash: hash(salt + pass) };
+    save('oil_users', users);
+  } else {
+    const u = users[email];
+    if (!u) return showError('Такой почты нет, сначала зарегистрируйся');
+    if (u.hash !== hash(u.salt + pass)) return showError('Неверный пароль');
+  }
+  user = email;
+  save('oil_session', user);
+  screen = 'well';
+  render();
+}
+
+function logout() { user = null; save('oil_session', null); render(); }
+function selectPart(i) { selected = i; render(); }
+function go(s) { screen = s; render(); }
+
+// ---------- отрисовка ----------
+function renderLogin() {
+  return `
+  <div class="login">
+    <div class="title">Конструкция скважины</div>
+    <p>Зарегистрируйся по почте, разбери схему скважины и поставь каплю нефти у частей, которые понял или не понял.</p>
+    <input id="email" type="email" placeholder="Почта" autocomplete="off">
+    <input id="pass" type="password" placeholder="Пароль" autocomplete="off">
+    <div class="error" id="err"></div>
+    <div class="row">
+      <button class="btn" onclick="submitAuth(false)">Войти</button>
+      <button class="btn primary" onclick="submitAuth(true)">Зарегистрироваться</button>
+    </div>
+  </div>`;
+}
+
+function renderWellSvg(drops) {
+  const W = 400, H = 640;
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8a6e4b"/><stop offset="0.35" stop-color="#c9a97a"/>
+        <stop offset="0.7" stop-color="#e7d6b8"/><stop offset="1" stop-color="#f4ecd9"/>
+      </linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#ground)"/>`;
+
+  PARTS.forEach((p, i) => {
+    const fill = i === selected ? '#3aa7cf' : '#f5f5f5';
+    p.rects.forEach(r => {
+      s += `<rect x="${r[0] * W}" y="${r[1] * H}" width="${r[2] * W}" height="${r[3] * H}"
+              fill="${fill}" stroke="#6b7b86" onclick="selectPart(${i})" style="cursor:pointer"/>`;
+    });
+  });
+
+  // капли нефти справа от частей
+  PARTS.forEach(p => {
+    const lvl = drops[p.id];
+    if (lvl === undefined) return;
+    const cy = (p.rects[0][1] + p.rects[0][3] / 2) * H;
+    s += `<g transform="translate(${W * 0.82},${cy})">
+            <path d="M0,-20 C16,2 14,18 0,18 C-14,18 -16,2 0,-20 Z" fill="#1c1c1c" stroke="${LEVELS[lvl].color}" stroke-width="4"/>
+          </g>`;
+  });
+  return s + '</svg>';
+}
+
+function renderWell() {
+  const drops = myDrops();
+  const p = PARTS[selected];
+  const partBtns = PARTS.map((q, i) => {
+    const d = drops[q.id];
+    const dot = d === undefined ? '' : `<span class="dot" style="background:${LEVELS[d].color}"></span>`;
+    return `<button class="part ${i === selected ? 'sel' : ''}" onclick="selectPart(${i})"><span>${esc(q.name)}</span>${dot}</button>`;
+  }).join('');
+  const levelBtns = [2, 1, 0].map(l =>
+    `<button class="btn ${drops[p.id] === l ? 'active' : ''}" onclick="setLevel(${l})">● ${LEVELS[l].name}</button>`).join('');
+
+  return `
+  <div class="main">
+    <div class="parts">${partBtns}</div>
+    <div class="well">${renderWellSvg(drops)}</div>
+    <div class="info">
+      <h2>${esc(p.name)}</h2>
+      <p>${esc(p.text)}</p>
+      <p class="ask">Как ты понял эту часть? Поставь каплю:</p>
+      ${levelBtns}
+      <div class="spacer"></div>
+      <button class="btn" onclick="go('results')">Результаты группы</button>
+      <button class="btn" onclick="logout()">Выйти (${esc(user)})</button>
+    </div>
+  </div>`;
+}
+
+function renderResults() {
+  const all = load('oil_drops', {});
+  const rows = PARTS.map(p => {
+    const c = [0, 0, 0];
+    Object.values(all).forEach(d => { if (d[p.id] !== undefined) c[d[p.id]]++; });
+    const total = Math.max(1, c[0] + c[1] + c[2]);
+    const seg = (n, color) => `<div style="width:${n / total * 100}%;background:${color}"></div>`;
+    return `<div class="rrow">
+      <div class="rname">${esc(p.name)}</div>
+      <div class="bar">${seg(c[0], LEVELS[0].color)}${seg(c[1], LEVELS[1].color)}${seg(c[2], LEVELS[2].color)}</div>
+      <div class="nums">${c[0]} / ${c[1]} / ${c[2]}</div>
+    </div>`;
+  }).join('');
+  return `
+  <div class="results">
+    <h2>Результаты группы (все студенты на этом планшете)</h2>
+    <p>Красный: плохо понял, жёлтый: частично, зелёный: понял. Числа идут в том же порядке.</p>
+    ${rows}
+    <button class="btn primary" style="align-self:flex-start" onclick="go('well')">Назад к схеме</button>
+  </div>`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!user) app.innerHTML = renderLogin();
+  else app.innerHTML = screen === 'results' ? renderResults() : renderWell();
+}
+
+render();
+
+// офлайн-режим: работает, когда страница открыта по https (GitHub Pages) или localhost
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
