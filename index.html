@@ -27,7 +27,7 @@
   /* главный экран */
   .main { display: grid; grid-template-columns: 250px 1fr 380px; gap: 16px; padding: 16px; height: 100%; }
   .parts { display: flex; flex-direction: column; gap: 8px; }
-  .part { flex: 1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border: 1px solid #3aa7cf; border-radius: 8px; background: #bfe3f2; font-size: 18px; color: #0b2a3a; }
+  .part { flex: 1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border: 1px solid #3aa7cf; border-radius: 8px; background: #bfe3f2; font-size: 17px; }
   .part.sel { background: #3aa7cf; font-weight: 700; }
   .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; margin-left: 8px; }
   .well { min-height: 0; background: #fff; border-radius: 10px; overflow: hidden; }
@@ -37,6 +37,12 @@
   .info p { margin: 0; font-size: 19px; color: #27465a; line-height: 1.4; }
   .info .ask { font-weight: 700; color: #0b2a3a; margin-top: 8px; }
   .spacer { flex: 1; }
+  .presence {
+    background: #f6fbff; border: 1px solid #aed6ea; border-radius: 12px;
+    padding: 12px; color: #173d51; line-height: 1.5; font-size: 16px;
+  }
+  .presence h3 { margin: 0 0 8px; font-size: 19px; }
+  .presence ul { margin: 0; padding-left: 18px; }
 
   /* результаты */
   .results { padding: 24px; max-width: 900px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
@@ -61,28 +67,27 @@
 
 <script>
 // ---------- данные о частях скважины ----------
-// rects: [x, y, w, h] в долях от размера рисунка
 const PARTS = [
   { id: 'mouth', name: 'Устье',
-    text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину (герметизирует) и позволяет ею управлять.',
+    text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину (герметизирует ее) и служит входом для оборудования.',
     rects: [[0.27, 0.00, 0.46, 0.05]] },
   { id: 'direction', name: 'Направление',
-    text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта, чтобы его не размыло и устье не провалилось.',
+    text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта, чтобы его не размыло и чтобы скважина не “расползалась” в верхней части.',
     rects: [[0.27, 0.05, 0.46, 0.09]] },
   { id: 'conductor', name: 'Кондуктор',
-    text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты, чтобы они не загрязнялись. На него устанавливают противовыбросовое оборудование.',
+    text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты, чтобы они не загрязнялись при бурении и не смешивались с нефтью.',
     rects: [[0.32, 0.14, 0.36, 0.10]] },
   { id: 'casing', name: 'Обсадная колонна',
-    text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом, чтобы стенки не обваливались, а пласты не перетекали друг в друга.',
+    text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом, чтобы стенки не обваливались, а пластовые воды и горные породы не смешивались между собой.',
     rects: [[0.40, 0.24, 0.20, 0.36]] },
   { id: 'walls', name: 'Стенки скважины',
-    text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются, поэтому их укрепляют обсадными колоннами.',
+    text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются, поэтому их укрепляют обсадной колонной и цементом.',
     rects: [[0.385, 0.24, 0.015, 0.36], [0.60, 0.24, 0.015, 0.36], [0.44, 0.60, 0.01, 0.30], [0.55, 0.60, 0.01, 0.30]] },
   { id: 'production', name: 'Эксплуатационная колонна',
     text: 'Последняя, самая узкая колонна. Спускается до продуктивного пласта, и по ней нефть поднимается на поверхность.',
     rects: [[0.45, 0.60, 0.10, 0.30]] },
   { id: 'bottom', name: 'Забой',
-    text: 'Дно скважины, самая нижняя точка, до которой дошло бурение. При бурении здесь долото разрушает породу, а при добыче именно сюда из пласта поступает нефть.',
+    text: 'Дно скважины, самая нижняя точка, до которой дошло бурение. При бурении здесь долото разрушает породу и формирует конечную глубину скважины.',
     rects: [[0.36, 0.90, 0.28, 0.03]] }
 ];
 const LEVELS = [
@@ -91,14 +96,15 @@ const LEVELS = [
   { name: 'Понял', color: '#3aa655' }
 ];
 
-// ---------- хранилище (всё лежит в браузере планшета) ----------
+const PRESENCE_KEY = 'oil_presence';
+const PRESENCE_TTL = 30000;
+
 function load(key, fallback) {
   try { const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }
   catch (e) { return fallback; }
 }
 function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
 
-// простой хэш пароля (для учебного приложения, не для банка)
 function hash(str) {
   let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
   for (let i = 0; i < str.length; i++) {
@@ -116,9 +122,10 @@ function esc(s) {
 }
 
 // ---------- состояние ----------
-let user = load('oil_session', null);   // почта вошедшего студента
-let screen = 'well';                    // 'well' или 'results'
-let selected = 0;                       // выбранная часть скважины
+let user = load('oil_session', null);
+let screen = 'well';
+let selected = 0;
+let presenceChannel = null;
 
 function myDrops() { return (load('oil_drops', {})[user]) || {}; }
 
@@ -130,28 +137,64 @@ function setLevel(level) {
   render();
 }
 
-// ---------- вход и регистрация ----------
+function getPresenceMap() {
+  const map = load(PRESENCE_KEY, {});
+  const now = Date.now();
+  for (const key in map) {
+    if (now - (map[key].seenAt || 0) > PRESENCE_TTL) delete map[key];
+  }
+  save(PRESENCE_KEY, map);
+  return map;
+}
+
+function updatePresence() {
+  if (!user) return;
+  const map = getPresenceMap();
+  map[user] = { name: user, seenAt: Date.now() };
+  save(PRESENCE_KEY, map);
+  if (presenceChannel) { presenceChannel.postMessage({ type: 'presence', name: user, seenAt: Date.now() }); }
+  renderOnlineUsers();
+}
+
+function renderOnlineUsers() {
+  const users = Object.values(getPresenceMap())
+    .filter(u => u && u.name)
+    .map(u => u.name)
+    .sort((a, b) => a.localeCompare(b));
+
+  const list = users.length ? users.map(name => `<li>${esc(name)}</li>`).join('') : '<li>Никого</li>';
+  return `<div class="presence"><h3>Кто сейчас в комнат��:</h3><ul>${list}</ul></div>`;
+}
+
+function subscribePresence() {
+  if ('BroadcastChannel' in window) {
+    presenceChannel = new BroadcastChannel('oil_presence_channel');
+    presenceChannel.onmessage = (event) => {
+      const msg = event.data || {};
+      if (msg.name) {
+        const map = getPresenceMap();
+        map[msg.name] = { name: msg.name, seenAt: msg.seenAt || Date.now() };
+        save(PRESENCE_KEY, map);
+        renderOnlineUsers();
+      }
+    };
+  }
+
+  window.addEventListener('storage', (event) => {
+    if (event.key === PRESENCE_KEY) {
+      renderOnlineUsers();
+    }
+  });
+}
+
 function showError(msg) { document.getElementById('err').textContent = msg; }
 
-function submitAuth(isRegister) {
-  const email = document.getElementById('email').value.trim().toLowerCase();
-  const pass = document.getElementById('pass').value;
-  const users = load('oil_users', {});
-
-  if (isRegister) {
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Введи почту в формате name@mail.ru');
-    if (pass.length < 4) return showError('Пароль должен быть хотя бы 4 символа');
-    if (users[email]) return showError('Эта почта уже зарегистрирована');
-    const salt = Math.random().toString(36).slice(2);
-    users[email] = { salt, hash: hash(salt + pass) };
-    save('oil_users', users);
-  } else {
-    const u = users[email];
-    if (!u) return showError('Такой почты нет, сначала зарегистрируйся');
-    if (u.hash !== hash(u.salt + pass)) return showError('Неверный пароль');
-  }
-  user = email;
+function submitAuth() {
+  const name = document.getElementById('name').value.trim();
+  if (!name) return showError('Введи имя');
+  user = name;
   save('oil_session', user);
+  updatePresence();
   screen = 'well';
   render();
 }
@@ -160,18 +203,16 @@ function logout() { user = null; save('oil_session', null); render(); }
 function selectPart(i) { selected = i; render(); }
 function go(s) { screen = s; render(); }
 
-// ---------- отрисовка ----------
+// ---------- вход и регистрация ----------
 function renderLogin() {
   return `
   <div class="login">
     <div class="title">Конструкция скважины</div>
-    <p>Зарегистрируйся по почте, разбери схему скважины и поставь каплю нефти у частей, которые понял или не понял.</p>
-    <input id="email" type="email" placeholder="Почта" autocomplete="off">
-    <input id="pass" type="password" placeholder="Пароль" autocomplete="off">
+    <p>Введи своё имя, чтобы все увидели, кто уже зашёл в комнату.</p>
+    <input id="name" type="text" placeholder="Имя" autocomplete="off">
     <div class="error" id="err"></div>
     <div class="row">
-      <button class="btn" onclick="submitAuth(false)">Войти</button>
-      <button class="btn primary" onclick="submitAuth(true)">Зарегистрироваться</button>
+      <button class="btn primary" onclick="submitAuth()">Войти</button>
     </div>
   </div>`;
 }
@@ -195,7 +236,6 @@ function renderWellSvg(drops) {
     });
   });
 
-  // капли нефти справа от частей
   PARTS.forEach(p => {
     const lvl = drops[p.id];
     if (lvl === undefined) return;
@@ -228,6 +268,7 @@ function renderWell() {
       <p class="ask">Как ты понял эту часть? Поставь каплю:</p>
       ${levelBtns}
       <div class="spacer"></div>
+      ${renderOnlineUsers()}
       <button class="btn" onclick="go('results')">Результаты группы</button>
       <button class="btn" onclick="logout()">Выйти (${esc(user)})</button>
     </div>
@@ -252,6 +293,7 @@ function renderResults() {
     <h2>Результаты группы (все студенты на этом планшете)</h2>
     <p>Красный: плохо понял, жёлтый: частично, зелёный: понял. Числа идут в том же порядке.</p>
     ${rows}
+    ${renderOnlineUsers()}
     <button class="btn primary" style="align-self:flex-start" onclick="go('well')">Назад к схеме</button>
   </div>`;
 }
@@ -262,9 +304,18 @@ function render() {
   else app.innerHTML = screen === 'results' ? renderResults() : renderWell();
 }
 
+subscribePresence();
 render();
 
-// офлайн-режим: работает, когда страница открыта по https (GitHub Pages) или localhost
+if (!user) {
+  // ничего не делаем
+} else {
+  updatePresence();
+}
+setInterval(() => {
+  if (user) updatePresence();
+}, 15000);
+
 if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
