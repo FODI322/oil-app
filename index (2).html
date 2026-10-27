@@ -1,0 +1,533 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Конструкция скважины</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#3aa7cf">
+<link rel="icon" type="image/png" href="icon-192.png">
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; font-family: system-ui, Roboto, Arial, sans-serif; background: #eef6fb; color: #0b2a3a; }
+  button { font: inherit; cursor: pointer; }
+  .btn { border: 0; border-radius: 10px; padding: 14px 18px; font-size: 18px; background: #bfe3f2; color: #0b2a3a; }
+  .btn.primary { background: #3aa7cf; font-weight: 700; }
+  .btn.active { outline: 4px solid #0b2a3a; }
+  .title { background: #3aa7cf; border-radius: 14px; padding: 18px; text-align: center; font-size: 28px; font-weight: 700; }
+
+  /* вход */
+  .login { max-width: 460px; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 14px; min-height: 100%; justify-content: center; }
+  .login p { margin: 0; font-size: 17px; color: #27465a; }
+  .login input { font-size: 20px; padding: 14px; border: 2px solid #9ec9dc; border-radius: 10px; width: 100%; }
+  .login .row { display: flex; gap: 12px; }
+  .login .row .btn { flex: 1; }
+  .hint { font-size: 14px; color: #5b7686; margin-top: -8px; }
+  .error { color: #c0392b; min-height: 22px; font-size: 16px; }
+
+  /* главный экран */
+  .main { display: grid; grid-template-columns: 250px 1fr 380px; gap: 16px; padding: 16px; height: 100%; }
+  .parts { display: flex; flex-direction: column; gap: 8px; }
+  .part { flex: 1; display: flex; align-items: center; justify-content: space-between; text-align: left; padding: 8px 12px; border: 1px solid #3aa7cf; border-radius: 8px; background: #bfe3f2; font-size: 18px; color: #0b2a3a; }
+  .part.sel { background: #3aa7cf; font-weight: 700; }
+  .dot { width: 18px; height: 18px; border-radius: 50%; flex: none; margin-left: 8px; }
+  .well { min-height: 0; background: #fff; border-radius: 10px; overflow: hidden; }
+  .well svg { width: 100%; height: 100%; display: block; }
+  .info { display: flex; flex-direction: column; gap: 12px; }
+  .info h2 { margin: 0; font-size: 30px; }
+  .info p { margin: 0; font-size: 19px; color: #27465a; line-height: 1.4; }
+  .info .ask { font-weight: 700; color: #0b2a3a; margin-top: 8px; }
+  .spacer { flex: 1; }
+
+  /* результаты */
+  .results { padding: 24px; max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+  .results h2 { margin: 0; font-size: 26px; }
+  .results h3 { margin: 12px 0 0; font-size: 20px; }
+  .status { margin: 0; font-size: 16px; color: #27465a; }
+  .rrow { display: flex; align-items: center; gap: 12px; }
+  .rname { width: 260px; font-size: 19px; }
+  .bar { flex: 1; height: 34px; border-radius: 6px; background: #dfe7ec; display: flex; overflow: hidden; }
+  .nums { width: 130px; font-size: 18px; color: #27465a; }
+  .tablewrap { overflow-x: auto; background: #fff; border-radius: 10px; }
+  .tbl { border-collapse: collapse; width: 100%; font-size: 16px; }
+  .tbl th, .tbl td { border-bottom: 1px solid #dfe7ec; padding: 8px 10px; text-align: center; white-space: nowrap; }
+  .tbl th { background: #bfe3f2; font-size: 13px; }
+  .tbl th:first-child, .tbl td:first-child { text-align: left; position: sticky; left: 0; }
+  .tbl td:first-child { background: #fff; font-weight: 600; }
+  .tbl th:first-child { background: #bfe3f2; }
+  .tbl .dot { display: inline-block; margin: 0; vertical-align: middle; }
+  .btnrow { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  @media (max-width: 950px) {
+    .main { grid-template-columns: 1fr; height: auto; }
+    .parts { flex-direction: row; flex-wrap: wrap; }
+    .part { flex: 1 1 45%; min-height: 52px; }
+    .well { height: 520px; }
+    .rname { width: 130px; font-size: 16px; }
+    .nums { width: 90px; }
+  }
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<script src="config.js"></script>
+<script src="cloud.js"></script>
+<script>
+// ---------- данные о частях скважины ----------
+// rects: [x, y, w, h] в долях от размера рисунка
+const PARTS = [
+  { id: 'mouth', name: 'Устье',
+    text: 'Верхняя часть скважины, выход на поверхность. Здесь стоит арматура: она закрывает скважину (герметизирует) и позволяет ею управлять.',
+    rects: [[0.27, 0.00, 0.46, 0.05]] },
+  { id: 'direction', name: 'Направление',
+    text: 'Самая короткая и самая широкая труба. Закрепляет верхний рыхлый слой грунта, чтобы его не размыло и устье не провалилось.',
+    rects: [[0.27, 0.05, 0.46, 0.09]] },
+  { id: 'conductor', name: 'Кондуктор',
+    text: 'Вторая колонна труб. Перекрывает верхние слои и пресные водоносные горизонты, чтобы они не загрязнялись. На него устанавливают противовыбросовое оборудование.',
+    rects: [[0.32, 0.14, 0.36, 0.10]] },
+  { id: 'casing', name: 'Обсадная колонна',
+    text: 'Стальные трубы, которыми крепят скважину. Их заливают цементом, чтобы стенки не обваливались, а пласты не перетекали друг в друга.',
+    rects: [[0.40, 0.24, 0.20, 0.36]] },
+  { id: 'walls', name: 'Стенки скважины',
+    text: 'Сама порода, которую пробурили. Без труб и цемента стенки обваливаются, поэтому их укрепляют обсадными колоннами.',
+    rects: [[0.385, 0.24, 0.015, 0.36], [0.60, 0.24, 0.015, 0.36], [0.44, 0.60, 0.01, 0.30], [0.55, 0.60, 0.01, 0.30]] },
+  { id: 'production', name: 'Эксплуатационная колонна',
+    text: 'Последняя, самая узкая колонна. Спускается до продуктивного пласта, и по ней нефть поднимается на поверхность.',
+    rects: [[0.45, 0.60, 0.10, 0.30]] },
+  { id: 'bottom', name: 'Забой',
+    text: 'Дно скважины, самая нижняя точка, до которой дошло бурение. При бурении здесь долото разрушает породу, а при добыче именно сюда из пласта поступает нефть.',
+    rects: [[0.36, 0.90, 0.28, 0.03]] }
+];
+const LEVELS = [
+  { name: 'Плохо понял', color: '#d64545' },
+  { name: 'Понял частично', color: '#e0a526' },
+  { name: 'Понял', color: '#3aa655' }
+];
+
+// ---------- хранилище на устройстве ----------
+function load(key, fallback) {
+  try { const v = JSON.parse(localStorage.getItem(key)); return v === null ? fallback : v; }
+  catch (e) { return fallback; }
+}
+function save(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+
+// простой хэш пароля (для учебного приложения, не для банка)
+function hash(str) {
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(16);
+}
+
+function esc(s) {
+  return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// ---------- состояние ----------
+let user = load('oil_session', null);   // почта вошедшего студента
+let screen = 'well';                    // 'well' или 'results'
+let selected = 0;                       // выбранная часть скважины
+let pending = null;                     // регистрация, которая ждёт код из письма
+let notice = '';                        // одноразовое сообщение на главном экране
+let cloudRows = load('oil_cloud', null);// последние ответы всех студентов из Supabase
+let cloudState = '';                    // '', 'loading', 'ok', 'offline'
+
+function uidOf(email) { return hash('oil:' + email); }
+function displayName(email) {
+  const u = load('oil_users', {})[email];
+  return (u && u.name) || String(email).split('@')[0];
+}
+function myDrops() { return (load('oil_drops', {})[user]) || {}; }
+
+function setLevel(level) {
+  const all = load('oil_drops', {});
+  all[user] = all[user] || {};
+  all[user][PARTS[selected].id] = level;
+  save('oil_drops', all);
+  queueAnswer(PARTS[selected], level);
+  render();
+}
+
+// ---------- общая база ответов (Supabase) ----------
+function syncEnabled() {
+  return typeof SUPABASE_URL !== 'undefined' && typeof SUPABASE_KEY !== 'undefined' &&
+    !!(SUPABASE_URL && SUPABASE_KEY);
+}
+
+function sbHeaders(extra) {
+  const h = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' };
+  if (SUPABASE_KEY.indexOf('eyJ') === 0) h.Authorization = 'Bearer ' + SUPABASE_KEY; // старый формат ключа (JWT)
+  return Object.assign(h, extra || {});
+}
+
+async function sbFetch(path, opts) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 15000);
+  try {
+    return await fetch(SUPABASE_URL.replace(/\/+$/, '') + '/rest/v1/' + path,
+      Object.assign({ signal: ctrl.signal }, opts));
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function makeAnswer(p, level) { return { uid: uidOf(user), name: displayName(user), part: p.id, level }; }
+
+// Ответ сначала кладётся в очередь на устройстве, потом отправляется.
+// Если интернета нет, он уйдёт позже, когда связь появится.
+function queueAnswer(p, level) {
+  if (!syncEnabled() || !user) return;
+  const uid = uidOf(user);
+  const q = load('oil_queue', []).filter(a => !(a.uid === uid && a.part === p.id));
+  q.push(makeAnswer(p, level));
+  save('oil_queue', q);
+  flushQueue();
+}
+
+// отправить все свои ответы (нужно, если они были поставлены до подключения базы)
+function queueAllMine() {
+  if (!syncEnabled() || !user) return;
+  const mine = myDrops();
+  const uid = uidOf(user);
+  const q = load('oil_queue', []);
+  PARTS.forEach(p => {
+    if (mine[p.id] === undefined) return;
+    if (q.some(a => a.uid === uid && a.part === p.id)) return;
+    q.push(makeAnswer(p, mine[p.id]));
+  });
+  save('oil_queue', q);
+  flushQueue();
+}
+
+let flushing = false;
+async function flushQueue() {
+  if (!syncEnabled() || flushing) return;
+  flushing = true;
+  try {
+    let q = load('oil_queue', []);
+    while (q.length) {
+      const a = q[0];
+      const r = await sbFetch('oil_answers?on_conflict=uid,part', {
+        method: 'POST',
+        headers: sbHeaders({ Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({ uid: a.uid, name: a.name, part: a.part, level: a.level, updated_at: new Date().toISOString() })
+      });
+      if (!r.ok) break;
+      q = load('oil_queue', []).filter(x => !(x.uid === a.uid && x.part === a.part && x.level === a.level));
+      save('oil_queue', q);
+    }
+  } catch (e) {
+    // нет интернета: ответы остаются в очереди и уйдут позже
+  } finally {
+    flushing = false;
+  }
+}
+
+async function refreshResults() {
+  if (!syncEnabled()) { render(); return; }
+  cloudState = 'loading';
+  render();
+  await flushQueue();
+  try {
+    const r = await sbFetch('oil_answers?select=uid,name,part,level&order=name.asc', { headers: sbHeaders() });
+    if (!r.ok) throw new Error('bad status');
+    const rows = await r.json();
+    if (!Array.isArray(rows)) throw new Error('bad data');
+    cloudRows = rows;
+    save('oil_cloud', rows);
+    cloudState = 'ok';
+  } catch (e) {
+    cloudState = 'offline';
+  }
+  render();
+}
+
+function openResults() { screen = 'results'; refreshResults(); }
+
+// Все ответы: из общей базы и с этого устройства, сгруппированные по студентам
+function collectAnswers() {
+  const map = {};
+  const add = (uid, name, part, level) => {
+    const lv = Number(level);
+    if (![0, 1, 2].includes(lv) || !PARTS.some(p => p.id === part)) return;
+    const s = map[uid] = map[uid] || { name: String(name || '?'), a: {} };
+    s.name = String(name || s.name);
+    s.a[part] = lv;
+  };
+  const addLocal = () => {
+    const drops = load('oil_drops', {});
+    Object.keys(drops).forEach(email => {
+      Object.keys(drops[email]).forEach(part => add(uidOf(email), displayName(email), part, drops[email][part]));
+    });
+  };
+  const addCloud = () => { if (Array.isArray(cloudRows)) cloudRows.forEach(r => add(r.uid, r.name, r.part, r.level)); };
+  // если данные из базы свежие, они главнее; если связи нет, главнее ответы с этого устройства
+  if (cloudState === 'ok') { addLocal(); addCloud(); } else { addCloud(); addLocal(); }
+  return Object.values(map).sort((x, y) => x.name.localeCompare(y.name, 'ru'));
+}
+
+// ---------- письмо с кодом (EmailJS) ----------
+function emailConfigured() {
+  return typeof EMAIL_CONFIG !== 'undefined' &&
+    !!(EMAIL_CONFIG.serviceId && EMAIL_CONFIG.templateId && EMAIL_CONFIG.publicKey);
+}
+
+async function sendCode(email, code) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 10000);
+  try {
+    const r = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_id: EMAIL_CONFIG.serviceId,
+        template_id: EMAIL_CONFIG.templateId,
+        user_id: EMAIL_CONFIG.publicKey,
+        template_params: { to_email: email, code: code }
+      }),
+      signal: ctrl.signal
+    });
+    return r.ok;
+  } catch (e) {
+    return false;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function createUser(email, pass, name) {
+  const users = load('oil_users', {});
+  const salt = Math.random().toString(36).slice(2);
+  users[email] = { salt, hash: hash(salt + pass), name };
+  save('oil_users', users);
+}
+
+function finishRegistration(email, pass, name) {
+  createUser(email, pass, name);
+  user = email;
+  save('oil_session', user);
+  screen = 'well';
+  queueAllMine();
+  render();
+}
+
+async function registerWithEmail(email, pass, name) {
+  showError('Отправляю письмо на почту…');
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const ok = await sendCode(email, code);
+  if (ok) {
+    pending = { email, pass, name, code };
+    render();
+  } else {
+    notice = 'Письмо отправить не удалось (нет интернета?). Регистрация прошла без подтверждения.';
+    finishRegistration(email, pass, name);
+  }
+}
+
+function confirmCode() {
+  const v = document.getElementById('code').value.trim();
+  if (pending && v === pending.code) {
+    const p = pending;
+    pending = null;
+    finishRegistration(p.email, p.pass, p.name);
+  } else {
+    showError('Неверный код, проверь письмо');
+  }
+}
+
+function cancelPending() { pending = null; render(); }
+
+// ---------- вход и регистрация ----------
+function showError(msg) { document.getElementById('err').textContent = msg; }
+
+function submitAuth(isRegister) {
+  const name = document.getElementById('name').value.trim().replace(/\s+/g, ' ');
+  const email = document.getElementById('email').value.trim().toLowerCase();
+  const pass = document.getElementById('pass').value;
+  const users = load('oil_users', {});
+
+  if (isRegister) {
+    if (name.length < 2) return showError('Введи своё имя и фамилию');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return showError('Введи почту в формате name@mail.ru');
+    if (pass.length < 4) return showError('Пароль должен быть хотя бы 4 символа');
+    if (users[email]) return showError('Эта почта уже зарегистрирована');
+    if (emailConfigured()) {
+      registerWithEmail(email, pass, name);
+      return;
+    }
+    createUser(email, pass, name);
+  } else {
+    const u = users[email];
+    if (!u) return showError('Такой почты нет, сначала зарегистрируйся');
+    if (u.hash !== hash(u.salt + pass)) return showError('Неверный пароль');
+  }
+  user = email;
+  save('oil_session', user);
+  screen = 'well';
+  queueAllMine();
+  render();
+}
+
+function logout() { user = null; save('oil_session', null); render(); }
+function selectPart(i) { selected = i; render(); }
+function go(s) { screen = s; render(); }
+
+// ---------- отрисовка ----------
+function renderConfirm() {
+  return `
+  <div class="login">
+    <div class="title">Проверь почту</div>
+    <p>Мы отправили письмо с 6-значным кодом на <b>${esc(pending.email)}</b>. Введи код из письма. Если письма нет, посмотри в папке «Спам».</p>
+    <input id="code" type="text" inputmode="numeric" maxlength="6" placeholder="Код из письма" autocomplete="off">
+    <div class="error" id="err"></div>
+    <div class="row">
+      <button class="btn" onclick="cancelPending()">Отмена</button>
+      <button class="btn primary" onclick="confirmCode()">Подтвердить</button>
+    </div>
+  </div>`;
+}
+
+function renderLogin() {
+  return `
+  <div class="login">
+    <div class="title">Конструкция скважины</div>
+    <p>Зарегистрируйся, разбери схему скважины и поставь каплю нефти у частей, которые понял или не понял. Преподаватель увидит твоё имя рядом с ответами.</p>
+    <input id="name" type="text" maxlength="60" placeholder="Имя и фамилия" autocomplete="off">
+    <div class="hint">Имя нужно при регистрации. Для входа достаточно почты и пароля.</div>
+    <input id="email" type="email" placeholder="Почта" autocomplete="off">
+    <input id="pass" type="password" placeholder="Пароль" autocomplete="off">
+    <div class="error" id="err"></div>
+    <div class="row">
+      <button class="btn" onclick="submitAuth(false)">Войти</button>
+      <button class="btn primary" onclick="submitAuth(true)">Зарегистрироваться</button>
+    </div>
+  </div>`;
+}
+
+function renderWellSvg(drops) {
+  const W = 400, H = 640;
+  let s = `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet">
+    <defs>
+      <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#8a6e4b"/><stop offset="0.35" stop-color="#c9a97a"/>
+        <stop offset="0.7" stop-color="#e7d6b8"/><stop offset="1" stop-color="#f4ecd9"/>
+      </linearGradient>
+    </defs>
+    <rect width="${W}" height="${H}" fill="url(#ground)"/>`;
+
+  PARTS.forEach((p, i) => {
+    const fill = i === selected ? '#3aa7cf' : '#f5f5f5';
+    p.rects.forEach(r => {
+      s += `<rect x="${r[0] * W}" y="${r[1] * H}" width="${r[2] * W}" height="${r[3] * H}"
+              fill="${fill}" stroke="#6b7b86" onclick="selectPart(${i})" style="cursor:pointer"/>`;
+    });
+  });
+
+  // капли нефти справа от частей
+  PARTS.forEach(p => {
+    const lvl = drops[p.id];
+    if (lvl === undefined) return;
+    const cy = (p.rects[0][1] + p.rects[0][3] / 2) * H;
+    s += `<g transform="translate(${W * 0.82},${cy})">
+            <path d="M0,-20 C16,2 14,18 0,18 C-14,18 -16,2 0,-20 Z" fill="#1c1c1c" stroke="${LEVELS[lvl].color}" stroke-width="4"/>
+          </g>`;
+  });
+  return s + '</svg>';
+}
+
+function renderWell() {
+  const drops = myDrops();
+  const p = PARTS[selected];
+  const note = notice; notice = '';
+  const partBtns = PARTS.map((q, i) => {
+    const d = drops[q.id];
+    const dot = d === undefined ? '' : `<span class="dot" style="background:${LEVELS[d].color}"></span>`;
+    return `<button class="part ${i === selected ? 'sel' : ''}" onclick="selectPart(${i})"><span>${esc(q.name)}</span>${dot}</button>`;
+  }).join('');
+  const levelBtns = [2, 1, 0].map(l =>
+    `<button class="btn ${drops[p.id] === l ? 'active' : ''}" onclick="setLevel(${l})">● ${LEVELS[l].name}</button>`).join('');
+
+  return `
+  <div class="main">
+    <div class="parts">${partBtns}</div>
+    <div class="well">${renderWellSvg(drops)}</div>
+    <div class="info">
+      ${note ? `<p style="color:#c0392b">${esc(note)}</p>` : ''}
+      <h2>${esc(p.name)}</h2>
+      <p>${esc(p.text)}</p>
+      <p class="ask">Как ты понял эту часть? Поставь каплю:</p>
+      ${levelBtns}
+      <div class="spacer"></div>
+      <button class="btn" onclick="openResults()">Результаты группы</button>
+      <button class="btn" onclick="logout()">Выйти (${esc(displayName(user))})</button>
+    </div>
+  </div>`;
+}
+
+function resultsNote() {
+  if (!syncEnabled()) return 'Общая база не подключена: показаны ответы только с этого устройства.';
+  if (cloudState === 'loading') return 'Загружаю ответы всех студентов…';
+  if (cloudState === 'ok') return 'Данные обновлены: показаны ответы всех студентов.';
+  return 'Нет связи с общей базой: показаны последние сохранённые данные.';
+}
+
+function renderResults() {
+  const students = collectAnswers();
+  const bars = PARTS.map(p => {
+    const c = [0, 0, 0];
+    students.forEach(s => { if (s.a[p.id] !== undefined) c[s.a[p.id]]++; });
+    const total = Math.max(1, c[0] + c[1] + c[2]);
+    const seg = (n, color) => `<div style="width:${n / total * 100}%;background:${color}"></div>`;
+    return `<div class="rrow">
+      <div class="rname">${esc(p.name)}</div>
+      <div class="bar">${seg(c[0], LEVELS[0].color)}${seg(c[1], LEVELS[1].color)}${seg(c[2], LEVELS[2].color)}</div>
+      <div class="nums">${c[0]} / ${c[1]} / ${c[2]}</div>
+    </div>`;
+  }).join('');
+
+  const head = PARTS.map(p => `<th>${esc(p.name)}</th>`).join('');
+  const body = students.map(s => `<tr><td>${esc(s.name)}</td>` + PARTS.map(p => {
+    const l = s.a[p.id];
+    return `<td>${l === undefined ? '–' : `<span class="dot" style="background:${LEVELS[l].color}" title="${LEVELS[l].name}"></span>`}</td>`;
+  }).join('') + '</tr>').join('');
+
+  return `
+  <div class="results">
+    <h2>Результаты группы</h2>
+    <p class="status">${resultsNote()} Студентов: ${students.length}.</p>
+    <p class="status">Красный: плохо понял, жёлтый: частично, зелёный: понял. Числа справа идут в том же порядке.</p>
+    ${bars}
+    <h3>Кто что ответил</h3>
+    ${students.length
+      ? `<div class="tablewrap"><table class="tbl"><thead><tr><th>Студент</th>${head}</tr></thead><tbody>${body}</tbody></table></div>`
+      : '<p class="status">Пока никто не ответил.</p>'}
+    <div class="btnrow">
+      <button class="btn primary" onclick="go('well')">Назад к схеме</button>
+      <button class="btn" onclick="refreshResults()">Обновить</button>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const app = document.getElementById('app');
+  if (!user) app.innerHTML = pending ? renderConfirm() : renderLogin();
+  else app.innerHTML = screen === 'results' ? renderResults() : renderWell();
+}
+
+render();
+queueAllMine();
+window.addEventListener('online', flushQueue);
+
+// офлайн-режим: работает, когда страница открыта по https (GitHub Pages) или localhost
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost')) {
+  navigator.serviceWorker.register('sw.js').catch(() => {});
+}
+</script>
+</body>
+</html>
